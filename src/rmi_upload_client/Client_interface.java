@@ -43,7 +43,6 @@ public class Client_interface extends javax.swing.JFrame {
     private String UserName = "";
     private AtomicBoolean pauseUpload;
     private AtomicBoolean pauseDownload;
-    private Thread threadObject;
     private UpDownload upload;
     private UpDownload download;
 

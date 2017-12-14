@@ -36,10 +36,8 @@ public class UpDownload extends Thread {
     private FileClientInt client;
     private String Username = "";
     private int state; // 1 la upload, 2 la download
-    private boolean check = false; // false la pause, true la tiep tuc down
-    private boolean wait = true;
+    private boolean check = false; // true la pause, false la tiep tuc down
     private static int countTotalFile;
-    private Thread threadObject;
     private Object lock = new Object();
     private File source;
     private File destination;
@@ -74,45 +72,16 @@ public class UpDownload extends Thread {
         destination = new File(destination.getParent() + "\\" + destination.getName() + "\\" + source.getName());
         //
 
-//        if (source.isFile()) {
-//            if (state == 1) {
-//                System.out.println("begin running");
-//                splitFile(source, destination);
-//                mergeFile(destination);
-//                System.out.println("Da upload thanh cong");
-//            } else if (state == 2) {
-//                splitFile(source, destination);
-//                mergeFile(destination);
-//                System.out.println("Da tai thanh cong");
-//            }
-//
-////                splitFile(srcFile, destFile);
-////                mergeFile(destFile);
-////                System.out.println("Da tai thanh cong");
-//        }
-//        if (source.isDirectory()) {
-//            // Neu thu muc dich khong ton tai thi tao ra thu muc moi
-//            if (!destination.exists()) {
-//                destination.mkdirs();
-//            }
-//            File[] listFile = source.listFiles();
-//            for (File f : listFile) {
-////                    System.out.println(f.getAbsolutePath());
-////                    System.out.println(destFile);
-//                copyFile(new File(f.getAbsolutePath()), new File(destFile + "\\" + f.getName()));
-//            }
-//        }
         try {
             FileInputStream fis;
             FileOutputStream fos;
             int sizeSrcFile = (int) source.length();
-            int sizeEachFile = 1 * 1024 * 128;
+            int sizeEachFile = 1 * 1024 * 64;
             int nChunks = 0, read = 0, readLength = sizeEachFile;
             byte[] byteChunkPart;
 
             fis = new FileInputStream(source);
             while (sizeSrcFile > 0) {
-//                    Thread.sleep(300);
                 if (sizeSrcFile <= sizeEachFile) {
                     readLength = sizeSrcFile;
                 }
@@ -128,6 +97,7 @@ public class UpDownload extends Thread {
                 fos.close();
                 byteChunkPart = null;
                 fos = null;
+                //kiem tra pause?
                 synchronized (this) {
                     while (isCheck()) {
                         wait();
@@ -141,7 +111,7 @@ public class UpDownload extends Thread {
             Logger.getLogger(UpDownload.class.getName()).log(Level.SEVERE, null, ex);
         }
         mergeFile(destination);
-        boolean successTimestampOp = destination.setLastModified(source.lastModified());
+        destination.setLastModified(source.lastModified());
     }
 
     public void delete(File file) throws RemoteException {
@@ -159,50 +129,6 @@ public class UpDownload extends Thread {
                 client.setSyncState("Người dùng " + this.Username + " : " + "Xóa file thành công " + file.getName());
                 server.showSyncState(client);
             }
-        }
-    }
-
-    public void upDownLoad(File source, File destination) throws Exception {
-        SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
-        String sts = sdf.format(source.lastModified());
-        String dts = sdf.format(destination.lastModified());
-        System.out.println(sts);
-        System.out.println(dts);
-        destination = new File(destination.getParent() + "\\" + destination.getName() + "\\" + source.getName());
-        copyFile(source, destination);
-    }
-
-    private void splitFile(File srcFile, File desFile) {
-        FileInputStream fis;
-        FileOutputStream fos;
-        int sizeSrcFile = (int) srcFile.length();
-        int sizeEachFile = 16 * 1024 * 1024;
-        int nChunks = 0, read = 0, readLength = sizeEachFile;
-        byte[] byteChunkPart;
-        try {
-            fis = new FileInputStream(srcFile);
-            while (sizeSrcFile > 0) {
-                if (sizeSrcFile <= sizeEachFile) {
-                    readLength = sizeSrcFile;
-                }
-                byteChunkPart = new byte[readLength];
-                read = fis.read(byteChunkPart, 0, (int) readLength);
-                sizeSrcFile -= read;
-                nChunks++;
-                countTotalFile = nChunks;
-                System.out.println(countTotalFile);
-                fos = new FileOutputStream(new File(desFile.getAbsoluteFile() + ".part") + Integer.toString(nChunks));
-                fos.write(byteChunkPart);
-                fos.flush();
-                fos.close();
-                byteChunkPart = null;
-                fos = null;
-            }
-            fis.close();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException exception) {
-            exception.printStackTrace();
         }
     }
 
@@ -236,50 +162,6 @@ public class UpDownload extends Thread {
         }
     }
 
-    private void copyFile(File srcFile, File destFile) throws Exception {
-
-        if (srcFile.isFile()) {
-            if (state == 1) {
-                System.out.println("begin running");
-                splitFile(srcFile, destFile);
-                mergeFile(destFile);
-                System.out.println("Da upload thanh cong");
-            } else if (state == 2) {
-                splitFile(srcFile, destFile);
-                mergeFile(destFile);
-                System.out.println("Da tai thanh cong");
-            }
-
-        }
-        if (srcFile.isDirectory()) {
-            // Neu thu muc dich khong ton tai thi tao ra thu muc moi
-            if (!destFile.exists()) {
-                destFile.mkdirs();
-            }
-            File[] listFile = srcFile.listFiles();
-            for (File f : listFile) {
-//                    System.out.println(f.getAbsolutePath());
-//                    System.out.println(destFile);
-                copyFile(new File(f.getAbsolutePath()), new File(destFile + "\\" + f.getName()));
-            }
-        }
-
-//        boolean successTimestampOp = destFile.setLastModified(srcFile.lastModified());
-//        if (!successTimestampOp) {
-////            JOptionPane.showMessageDialog(null, "Lỗi trong quá trình sửa đổi ngày cập nhật file :"
-////                    + destFile);
-//            client.setSyncState("Người dùng " + this.Username + " : " + "Lỗi trong quá trình sửa đổi ngày cập nhật file : " + destFile);
-//            server.showSyncState(client);
-//        }
-    }
-
-//    public void stopSync() throws RemoteException {
-//        DateTimeUtils.setCurrentMillisSystem();
-//        if (state == 0) {
-//            client.setSyncState("Người dùng " + this.Username + " : đã dừng Upload");
-//        }
-//        server.showSyncState(client);
-//    }
     public boolean isCheck() {
         return check;
     }
